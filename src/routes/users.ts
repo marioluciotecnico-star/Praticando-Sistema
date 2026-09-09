@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
 import { PrismaClient } from '@prisma/client'
-import { User } from '../models/user'
 
 const prisma = new PrismaClient()
 
@@ -19,12 +18,11 @@ usersRoutes.get('/users', async (request: Request, response: Response) => {
 
 usersRoutes.get('/users/:id', async (request: Request, response: Response) => {
 
-  const { id, } = request.params
+  const { id } = request.params
 
-  //todo-winnicius: transferir para o service de consulta do banco de dados
   const result = await prisma.user.findUnique({
     where: {
-      id: Number(id),
+      id: String(id),
     }
   })
 
@@ -45,33 +43,33 @@ usersRoutes.get('/users/:id', async (request: Request, response: Response) => {
   })
 })
 
-usersRoutes.post('/users', async (request: Request<User>, response: Response) => {
-  const { nome, email, senha } = request.body as User
+usersRoutes.post('/users', async (request: Request, response: Response) => {
+  const { name, email, password, age } = request.body
   const user = await prisma.user.create({
     data: {
-      nome,
+      name,
       email,
-      senha,
+      password,
+      age
     },
   })
 
   return response.status(201).json({
     message: 'Usuário criado com sucesso!',
-    timestamp: new Date().toISOString(),
     user: user,
   })
 })
 
 
-usersRoutes.put('/users/:id', async (request: Request<User>, response: Response) => {
+usersRoutes.put('/users/:id', async (request: Request, response: Response) => {
   const { id } = request.params
-  const { nome, email, senha } = request.body as User
+  const { name, email, senha } = request.body
   const user = await prisma.user.update({
     where: {
-      id: Number(id),
+      id: String(id),
     },
     data: {
-      nome,
+      name,
       email,
       senha,
     },
@@ -88,7 +86,7 @@ usersRoutes.delete('/users/:id', async (request: Request, response: Response) =>
   const { id } = request.params
   await prisma.user.delete({
     where: {
-      id: Number(id),
+      id: String(id),
     },
   })
 
