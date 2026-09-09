@@ -15,7 +15,7 @@ app.get('/', (request: Request, response: Response) => {
     timestamp: new Date().toISOString()
   })
 })
-
+app.use(express.json());
 app.use('/api/v1', [userRoutes])
 
 app.listen(port, () => {

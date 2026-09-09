@@ -1,9 +1,7 @@
 import type { Request, Response } from 'express'
 import { UserService } from '../services/user.service'
 
-// Controller - Camada de apresentação
-// Responsável por lidar com requisições HTTP e respostas
-// Delega a lógica de negócios para o Service
+
 export class UserController {
   private userService: UserService
 
