@@ -19,6 +19,6 @@ app.use(express.json());
 app.use('/api/v1', [userRoutes])
 
 app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}/api/v1/`)
+  console.log(`Servidor rodando em http://localhost:${port}/api/v1`)
   console.log(`Health: http://localhost:${port}/health`)
 })
