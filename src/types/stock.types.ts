@@ -1,9 +1,25 @@
-import type { StockMovement } from '@prisma/client';
+import type { Supplier, Product, StockMovement, PurchaseOrder } from '@prisma/client';
 
-export type IStockMovement = StockMovement;
+export interface CreateSupplierInput {
+  companyName: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+}
 
-export interface CreateStockMovementInput {
+export interface CreateProductInput {
+  name: string;
+  sku?: string;
+  description?: string;
+  price: number;
+  stock: number;
+  minQuantity?: number;
+  supplierId: number;
+}
+
+export interface CreateMovementInput {
   productId: number;
-  quantity: number;
   type: 'IN' | 'OUT';
+  quantity: number;
+  reason?: string;
 }

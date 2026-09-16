@@ -24,14 +24,33 @@ model User {
   @@map("users")
 }
 
+model Supplier {
+  id             Int             @id @default(autoincrement())
+  companyName    String
+  cnpj           String          @unique
+  email          String
+  phone          String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("supplier")
+}
+
 model Product {
   id          Int             @id @default(autoincrement())
+  sku         String?         @unique
   name        String
   description String?
   price       Decimal         @db.Decimal(10, 2)
   stock       Int             @default(0)
+  minQuantity Int             @default(5)
+  supplierId  Int
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  supplier    Supplier        @relation(fields: [supplierId], references: [id])
   movements   StockMovement[]
 
   @@map("product")
@@ -42,9 +61,21 @@ model StockMovement {
   productId Int
   quantity  Int
   type      MovementType
+  reason    String?
   createdAt DateTime     @default(now())
 
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("stock_movement")
+}
+
+model PurchaseOrder {
+  id         Int      @id @default(autoincrement())
+  supplierId Int
+  totalValue Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  @@map("purchase_order")
 }
