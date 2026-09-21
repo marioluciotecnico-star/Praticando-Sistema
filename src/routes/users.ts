@@ -1,101 +1,134 @@
-import type { Request, Response } from 'express'
-import { Router } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { authMiddleware } from '../middlewares/auth';
+import { CreateUserInput, LoginUserInput, UpdateUserInput } from '../types/user.types';
 
-const prisma = new PrismaClient()
+const router = Router();
+const prisma = new PrismaClient();
 
-const usersRoutes = Router()
+router.post('/users', async (req: Request, res: Response) => {
+  const { name, email, password, age } = req.body as CreateUserInput;
 
-usersRoutes.get('/users', async (request: Request, response: Response) => {
-  const result = await prisma.user.findMany()
-
-  return response.status(200).json({
-    message: `Lista de usuários`,
-    data: result,
-  })
-})
-
-
-usersRoutes.get('/users/:id', async (request: Request, response: Response) => {
-
-  const { id } = request.params
-
-  const result = await prisma.user.findUnique({
-    where: {
-      id: String(id),
-    }
-  })
-
-
-  if (!result) {
-    return response.status(404).json({
-      message: 'Usuário não encontrado',
-      timestamp: new Date().toISOString(),
-      status: 'API funcionando!'
-    })
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Nome, email e senha são obrigatórios' });
   }
 
+  const userExists = await prisma.user.findUnique({ where: { email } });
+  if (userExists) {
+    return res.status(400).json({ message: 'E-mail já cadastrado' });
+  }
 
-  response.status(200).json({
-    message: 'Detalhes do usuário:',
-    user: result,
-    status: 'API funcionando!'
-  })
-})
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-usersRoutes.post('/users', async (request: Request, response: Response) => {
-  const { name, email, password, age } = request.body
   const user = await prisma.user.create({
     data: {
       name,
       email,
-      password,
-      age
+      password: hashedPassword,
+      age: age ? Number(age) : null
     },
-  })
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      age: true,
+      createdAt: true
+    }
+  });
 
-  return response.status(201).json({
-    message: 'Usuário criado com sucesso!',
-    user: user,
-  })
-})
+  return res.status(201).json(user);
+});
 
+router.post('/users/login', async (req: Request, res: Response) => {
+  const { email, password } = req.body as LoginUserInput;
 
-usersRoutes.put('/users/:id', async (request: Request, response: Response) => {
-  const { id } = request.params
-  const { name, email, senha } = request.body
-  const user = await prisma.user.update({
-    where: {
-      id: String(id),
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email e senha são obrigatórios' });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    return res.status(400).json({ message: 'Credenciais inválidas' });
+  }
+
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
+    return res.status(400).json({ message: 'Credenciais inválidas' });
+  }
+
+  const secret = process.env.JWT_SECRET || 'default_secret';
+  const token = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: '1d' });
+
+  return res.status(200).json({
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email
     },
-    data: {
-      name,
-      email,
-      senha,
-    },
-  })
+    token
+  });
+});
 
-  return response.status(200).json({
-    message: 'Usuário atualizado com sucesso!',
-    timestamp: new Date().toISOString(),
-    user: user,
-  })
-})
+router.get('/users/me', authMiddleware, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
 
-usersRoutes.delete('/users/:id', async (request: Request, response: Response) => {
-  const { id } = request.params
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      age: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
+
+  if (!user) {
+    return res.status(404).json({ message: 'Usuário não encontrado' });
+  }
+
+  return res.status(200).json(user);
+});
+
+router.put('/users/me', authMiddleware, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { name, email, password, age } = req.body as UpdateUserInput;
+
+  const dataToUpdate: any = {};
+
+  if (name) dataToUpdate.name = name;
+  if (email) dataToUpdate.email = email;
+  if (age !== undefined) dataToUpdate.age = Number(age);
+  if (password) {
+    dataToUpdate.password = await bcrypt.hash(password, 10);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: dataToUpdate,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      age: true,
+      updatedAt: true
+    }
+  });
+
+  return res.status(200).json(updatedUser);
+});
+
+router.delete('/users/me', authMiddleware, async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+
   await prisma.user.delete({
-    where: {
-      id: String(id),
-    },
-  })
+    where: { id: userId }
+  });
 
-  return response.status(200).json({
-    message: 'Usuário deletado com sucesso!',
-    timestamp: new Date().toISOString(),
-  })
-})
+  return res.status(200).json({ message: 'Usuário removido com sucesso' });
+});
 
-export default usersRoutes
-
-
+export default router;

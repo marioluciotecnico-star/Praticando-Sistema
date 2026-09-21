@@ -1,35 +1,42 @@
-import dotenv from 'dotenv'
-import express, { type Request, type Response } from 'express'
-import userRoutes from './routes/users'
-import productRoutes from './routes/product'
-import stockRoutes from './routes/stock'
+import dotenv from 'dotenv';
+import express, { Request, Response } from 'express';
+import userRoutes from './routes/users';
+import productRoutes from './routes/product';
+import stockRoutes from './routes/stock';
 
-dotenv.config()
+dotenv.config();
 
-const app = express()
-const port = process.env.PORT || 3000
+const app = express();
+const port = process.env.PORT || 3000;
 
-app.use(express.urlencoded({ extended: true }))
-app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-app.get('/health', (request: Request, response: Response) => {
-  response.json({ status: 'OK' })
-})
+app.get('/health', (req: Request, res: Response) => {
+  res.json({ status: 'OK' });
+});
 
-app.get('/api/v1', (request: Request, response: Response) => {
-  response.json({
+app.get('/api/v1', (req: Request, res: Response) => {
+  res.json({
     message: 'Sistema de Controle de Estoque Corporativo',
     endpoints: {
+      users: {
+        create: 'POST /api/v1/users',
+        login: 'POST /api/v1/users/login',
+        me: 'GET /api/v1/users/me (Auth)',
+        updateMe: 'PUT /api/v1/users/me (Auth)',
+        deleteMe: 'DELETE /api/v1/users/me (Auth)'
+      },
       suppliers: '/api/v1/suppliers',
       products: '/api/v1/stock/products',
       movements: '/api/v1/stock/movements',
       purchaseOrders: '/api/v1/stock/purchase-orders'
     }
-  })
-})
+  });
+});
 
-app.use('/api/v1', [userRoutes, productRoutes, stockRoutes])
+app.use('/api/v1', [userRoutes, productRoutes, stockRoutes]);
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${port}/api/v1`)
-})
+  console.log(`🚀 Servidor rodando em http://localhost:${port}/api/v1`);
+});
