@@ -1,25 +1,21 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-enum MovementType {
-  IN   // Entrada de estoque
-  OUT  // Saída de estoque
+generator client {
+  provider = "prisma-client-js"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  age       Int?
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  age          Int?
+  password     String
+  profileImage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("users")
 }
@@ -39,32 +35,35 @@ model Supplier {
 }
 
 model Product {
-  id          Int             @id @default(autoincrement())
-  sku         String?         @unique
-  name        String
-  description String?
-  price       Decimal         @db.Decimal(10, 2)
-  stock       Int             @default(0)
-  minQuantity Int             @default(5)
-  supplierId  Int
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  supplier    Supplier        @relation(fields: [supplierId], references: [id])
-  movements   StockMovement[]
+  id             Int             @id @default(autoincrement())
+  sku            String?         @unique
+  name           String
+  description    String?
+  price          Decimal         @db.Decimal(10, 2)
+  stock          Int             @default(0)
+  minQuantity    Int             @default(5)
+  supplierId     Int
+  supplier       Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  stockMovements StockMovement[]
 
   @@map("product")
+}
+
+enum MovementType {
+  IN
+  OUT
 }
 
 model StockMovement {
   id        Int          @id @default(autoincrement())
   productId Int
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   type      MovementType
   reason    String?
   createdAt DateTime     @default(now())
-
-  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("stock_movement")
 }
@@ -72,10 +71,9 @@ model StockMovement {
 model PurchaseOrder {
   id         Int      @id @default(autoincrement())
   supplierId Int
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   totalValue Decimal  @db.Decimal(10, 2)
   createdAt  DateTime @default(now())
-
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
 
   @@map("purchase_order")
 }

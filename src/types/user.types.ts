@@ -15,4 +15,5 @@ export interface UpdateUserInput {
   email?: string;
   password?: string;
   age?: number;
+  profileImage?: string;
 }

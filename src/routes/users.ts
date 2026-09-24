@@ -1,14 +1,26 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from '../middlewares/auth';
+import { upload } from '../middlewares/upload';
 import { CreateUserInput, LoginUserInput, UpdateUserInput } from '../types/user.types';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-router.post('/users', async (req: Request, res: Response) => {
+const handleUpload = (fieldName: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    upload.single(fieldName)(req, res, (err: any) => {
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  };
+};
+
+router.post('/users', handleUpload('profileImage'), async (req: Request, res: Response) => {
   const { name, email, password, age } = req.body as CreateUserInput;
 
   if (!name || !email || !password) {
@@ -21,19 +33,22 @@ router.post('/users', async (req: Request, res: Response) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const profileImage = req.file ? `/uploads/${req.file.filename}` : null;
 
   const user = await prisma.user.create({
     data: {
       name,
       email,
       password: hashedPassword,
-      age: age ? Number(age) : null
+      age: age ? Number(age) : null,
+      profileImage
     },
     select: {
       id: true,
       name: true,
       email: true,
       age: true,
+      profileImage: true,
       createdAt: true
     }
   });
@@ -65,7 +80,8 @@ router.post('/users/login', async (req: Request, res: Response) => {
     user: {
       id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      profileImage: user.profileImage
     },
     token
   });
@@ -81,6 +97,7 @@ router.get('/users/me', authMiddleware, async (req: Request, res: Response) => {
       name: true,
       email: true,
       age: true,
+      profileImage: true,
       createdAt: true,
       updatedAt: true
     }
@@ -93,7 +110,7 @@ router.get('/users/me', authMiddleware, async (req: Request, res: Response) => {
   return res.status(200).json(user);
 });
 
-router.put('/users/me', authMiddleware, async (req: Request, res: Response) => {
+router.put('/users/me', authMiddleware, handleUpload('profileImage'), async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { name, email, password, age } = req.body as UpdateUserInput;
 
@@ -101,9 +118,12 @@ router.put('/users/me', authMiddleware, async (req: Request, res: Response) => {
 
   if (name) dataToUpdate.name = name;
   if (email) dataToUpdate.email = email;
-  if (age !== undefined) dataToUpdate.age = Number(age);
+  if (age !== undefined && age !== null && age !== ('' as any)) dataToUpdate.age = Number(age);
   if (password) {
     dataToUpdate.password = await bcrypt.hash(password, 10);
+  }
+  if (req.file) {
+    dataToUpdate.profileImage = `/uploads/${req.file.filename}`;
   }
 
   const updatedUser = await prisma.user.update({
@@ -114,6 +134,7 @@ router.put('/users/me', authMiddleware, async (req: Request, res: Response) => {
       name: true,
       email: true,
       age: true,
+      profileImage: true,
       updatedAt: true
     }
   });

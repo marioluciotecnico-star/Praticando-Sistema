@@ -2,32 +2,32 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 interface TokenPayload {
-  id: string;
-  email: string;
-  iat: number;
-  exp: number;
+id: string;
+email: string;
+iat: number;
+exp: number;
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const { authorization } = req.headers;
+const { authorization } = req.headers;
 
-  if (!authorization) {
+if (!authorization) {
     return res.status(401).json({ message: 'Token não fornecido' });
-  }
+}
 
-  const [, token] = authorization.split(' ');
+const [, token] = authorization.split(' ');
 
-  try {
+try {
     const secret = process.env.JWT_SECRET || 'default_secret';
     const decoded = jwt.verify(token, secret) as TokenPayload;
 
     req.user = {
-      id: decoded.id,
-      email: decoded.email
+    id: decoded.id,
+    email: decoded.email
     };
 
     return next();
-  } catch (error) {
+} catch (error) {
     return res.status(401).json({ message: 'Token inválido ou expirado' });
-  }
+}
 }
